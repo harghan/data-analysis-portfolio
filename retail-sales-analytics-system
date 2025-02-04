@@ -207,26 +207,3 @@ FROM customers c
 LEFT JOIN sales s ON c.customer_id = s.customer_id
 GROUP BY customer_name
 ORDER BY last_purchase_date DESC;
-
--- =============================================
--- Documentation Comments
--- =============================================
-
-/*
-Usage Instructions:
-1. Run the schema creation scripts
-2. Execute sample data insertion
-3. Run analysis queries as needed
-4. Modify queries according to specific needs
-
-Maintenance:
-- Regular backup recommended
-- Update sample data periodically
-- Add new categories/products as needed
-
-Future Enhancements:
-1. Add customer loyalty program
-2. Implement seasonal analysis
-3. Add product returns tracking
-4. Implement sales forecasting
-*/
