@@ -1,1 +1,232 @@
+/*
+Title: Retail Sales Analytics System
+Author: Harsha Ghandikota
+Created: 04-02-2025
+Description: A comprehensive sales analysis system for retail businesses
+Level: SQL Basic (HackerRank Certified)
+Version: 1.0.0
 
+This project demonstrates:
+- Database Schema Design
+- Basic SQL Queries
+- Data Analysis
+- Sales Metrics
+- Customer Insights
+*/
+
+-- =============================================
+-- Database Schema Creation
+-- =============================================
+
+-- Drop tables if they exist (for clean setup)
+DROP TABLE IF EXISTS sales;
+DROP TABLE IF EXISTS products;
+DROP TABLE IF EXISTS customers;
+DROP TABLE IF EXISTS categories;
+DROP TABLE IF EXISTS locations;
+
+-- Create Categories Table
+CREATE TABLE categories (
+    category_id INT PRIMARY KEY,
+    category_name VARCHAR(50) NOT NULL,
+    description VARCHAR(200),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create Locations Table (for customer cities)
+CREATE TABLE locations (
+    location_id INT PRIMARY KEY,
+    city VARCHAR(100) NOT NULL,
+    state VARCHAR(100),
+    region VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create Customers Table
+CREATE TABLE customers (
+    customer_id INT PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    location_id INT,
+    join_date DATE DEFAULT CURRENT_DATE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (location_id) REFERENCES locations(location_id)
+);
+
+-- Create Products Table
+CREATE TABLE products (
+    product_id INT PRIMARY KEY,
+    product_name VARCHAR(100) NOT NULL,
+    category_id INT,
+    unit_price DECIMAL(10,2) NOT NULL CHECK (unit_price > 0),
+    stock_quantity INT DEFAULT 0,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (category_id) REFERENCES categories(category_id)
+);
+
+-- Create Sales Table
+CREATE TABLE sales (
+    sale_id INT PRIMARY KEY,
+    customer_id INT,
+    product_id INT,
+    quantity INT CHECK (quantity > 0),
+    sale_date DATE DEFAULT CURRENT_DATE,
+    unit_price DECIMAL(10,2) NOT NULL,
+    total_amount DECIMAL(10,2) GENERATED ALWAYS AS (quantity * unit_price) STORED,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id),
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+-- =============================================
+-- Sample Data Insertion
+-- =============================================
+
+-- Insert Sample Categories
+INSERT INTO categories (category_id, category_name, description) VALUES
+(1, 'Electronics', 'Electronic gadgets and devices'),
+(2, 'Clothing', 'Apparel and fashion items'),
+(3, 'Books', 'Books and publications'),
+(4, 'Home & Kitchen', 'Household items');
+
+-- Insert Sample Locations
+INSERT INTO locations (location_id, city, state, region) VALUES
+(1, 'New York', 'NY', 'East'),
+(2, 'Los Angeles', 'CA', 'West'),
+(3, 'Chicago', 'IL', 'Midwest'),
+(4, 'Houston', 'TX', 'South');
+
+-- Insert Sample Customers
+INSERT INTO customers (customer_id, first_name, last_name, email, location_id) VALUES
+(1, 'John', 'Doe', 'john.doe@email.com', 1),
+(2, 'Jane', 'Smith', 'jane.smith@email.com', 2),
+(3, 'Robert', 'Johnson', 'robert.j@email.com', 3),
+(4, 'Sarah', 'Williams', 'sarah.w@email.com', 4);
+
+-- Insert Sample Products
+INSERT INTO products (product_id, product_name, category_id, unit_price, stock_quantity) VALUES
+(1, 'Smartphone', 1, 699.99, 50),
+(2, 'T-Shirt', 2, 19.99, 100),
+(3, 'Novel', 3, 14.99, 75),
+(4, 'Coffee Maker', 4, 89.99, 30);
+
+-- Insert Sample Sales
+INSERT INTO sales (sale_id, customer_id, product_id, quantity, sale_date, unit_price) VALUES
+(1, 1, 1, 1, '2024-01-15', 699.99),
+(2, 2, 2, 3, '2024-01-16', 19.99),
+(3, 3, 3, 2, '2024-01-16', 14.99),
+(4, 4, 4, 1, '2024-01-17', 89.99);
+
+-- =============================================
+-- Analysis Queries
+-- =============================================
+
+-- 1. Basic Sales Analysis
+-- Total sales by category
+SELECT 
+    c.category_name,
+    COUNT(s.sale_id) as total_sales,
+    SUM(s.total_amount) as total_revenue
+FROM categories c
+JOIN products p ON c.category_id = p.category_id
+JOIN sales s ON p.product_id = s.product_id
+GROUP BY c.category_name
+ORDER BY total_revenue DESC;
+
+-- 2. Customer Purchase Analysis
+-- Customer purchase history
+SELECT 
+    CONCAT(c.first_name, ' ', c.last_name) as customer_name,
+    l.city,
+    COUNT(s.sale_id) as purchase_count,
+    SUM(s.total_amount) as total_spent
+FROM customers c
+JOIN locations l ON c.location_id = l.location_id
+LEFT JOIN sales s ON c.customer_id = s.customer_id
+GROUP BY customer_name, l.city
+ORDER BY total_spent DESC;
+
+-- 3. Product Performance
+-- Best-selling products
+SELECT 
+    p.product_name,
+    c.category_name,
+    SUM(s.quantity) as units_sold,
+    SUM(s.total_amount) as total_revenue
+FROM products p
+JOIN categories c ON p.category_id = c.category_id
+JOIN sales s ON p.product_id = s.product_id
+GROUP BY p.product_name, c.category_name
+ORDER BY units_sold DESC;
+
+-- 4. Regional Sales Analysis
+-- Sales by region
+SELECT 
+    l.region,
+    COUNT(s.sale_id) as total_sales,
+    SUM(s.total_amount) as total_revenue,
+    AVG(s.total_amount) as avg_sale_value
+FROM locations l
+JOIN customers c ON l.location_id = c.location_id
+JOIN sales s ON c.customer_id = s.customer_id
+GROUP BY l.region
+ORDER BY total_revenue DESC;
+
+-- 5. Daily Sales Trend
+-- Sales trend by date
+SELECT 
+    sale_date,
+    COUNT(sale_id) as number_of_sales,
+    SUM(total_amount) as daily_revenue
+FROM sales
+GROUP BY sale_date
+ORDER BY sale_date;
+
+-- =============================================
+-- Performance Monitoring
+-- =============================================
+
+-- Low Stock Alert
+SELECT 
+    product_name,
+    stock_quantity,
+    unit_price
+FROM products
+WHERE stock_quantity < 20
+ORDER BY stock_quantity;
+
+-- Customer Activity Monitoring
+SELECT 
+    CONCAT(c.first_name, ' ', c.last_name) as customer_name,
+    COUNT(s.sale_id) as purchase_count,
+    MAX(s.sale_date) as last_purchase_date,
+    CURRENT_DATE - MAX(s.sale_date) as days_since_last_purchase
+FROM customers c
+LEFT JOIN sales s ON c.customer_id = s.customer_id
+GROUP BY customer_name
+ORDER BY last_purchase_date DESC;
+
+-- =============================================
+-- Documentation Comments
+-- =============================================
+
+/*
+Usage Instructions:
+1. Run the schema creation scripts
+2. Execute sample data insertion
+3. Run analysis queries as needed
+4. Modify queries according to specific needs
+
+Maintenance:
+- Regular backup recommended
+- Update sample data periodically
+- Add new categories/products as needed
+
+Future Enhancements:
+1. Add customer loyalty program
+2. Implement seasonal analysis
+3. Add product returns tracking
+4. Implement sales forecasting
+*/
